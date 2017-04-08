@@ -37,6 +37,7 @@
 #include "driverlib/uart.h"
 #include "utils/uartstdio.h"
 #include "driverlib/timer.h"
+#include "driverlib/systick.h"
 
 //*****************************************************************************
 //
@@ -88,6 +89,7 @@ ConfigureUART(void)
 }
 
 #define get_fast_ticks() TimerValueGet(TIMER0_BASE,TIMER_A)
+//#define get_fast_ticks() SysTickValueGet()
 
 void init_timer(void)
 {
@@ -96,7 +98,9 @@ void init_timer(void)
 
     // free running timer
     TimerConfigure(TIMER0_BASE, TIMER_CFG_PERIODIC_UP);
-    TimerEnable(TIMER0_BASE, TIMER_A);
+    TimerEnable(TIMER0_BASE, TIMER_BOTH);
+    //SysTickPeriodSet(10);
+    //SysTickEnable();
 }
 
 volatile uint32_t sTime, ch0T, ch1T, ch2T, ch3T, ch4T, ch5T, ch6T, ch7T;
