@@ -28,6 +28,7 @@
 #include "inc/hw_types.h"
 #include "inc/hw_gpio.h"
 #include "inc/hw_sysctl.h"
+#include "inc/hw_timer.h"
 #include "driverlib/adc.h"
 #include "driverlib/debug.h"
 #include "driverlib/gpio.h"
@@ -44,6 +45,7 @@
 #include "usb_gamepad_structs.h"
 #include "drivers/buttons.h"
 #include "utils/uartstdio.h"
+#include "driverlib/timer.h"
 
 //*****************************************************************************
 //
@@ -295,12 +297,12 @@ ConfigureUART(void)
     //
     // Use the internal 16MHz oscillator as the UART clock source.
     //
-    UARTClockSourceSet(UART0_BASE, UART_CLOCK_PIOSC);
+    UARTClockSourceSet(UART0_BASE, UART_CLOCK_SYSTEM);
 
     //
     // Initialize the UART for console I/O.
     //
-    UARTStdioConfig(0, 115200, 16000000);
+    UARTStdioConfig(0, 115200, ROM_SysCtlClockGet());
 }
 
 //*****************************************************************************
@@ -353,6 +355,85 @@ ADCInit(void)
     ROM_ADCSequenceEnable(ADC0_BASE, 0);
 }
 
+//#define get_fast_ticks() TimerValueGet(TIMER0_BASE,TIMER_A)
+#define get_fast_ticks() HWREG(TIMER0_BASE+TIMER_O_TAR)
+
+void init_timer(void)
+{
+    // peripheral
+    SysCtlPeripheralEnable(SYSCTL_PERIPH_TIMER0); // timer0
+
+    // free running timer
+    TimerConfigure(TIMER0_BASE, TIMER_CFG_PERIODIC_UP);
+    TimerEnable(TIMER0_BASE, TIMER_A);
+}
+
+volatile uint32_t sTime, ch0T, ch1T, ch2T;
+volatile uint32_t flags = 0;
+
+void PortDInt(void)
+{
+    uint32_t status=0;
+
+    status = GPIOIntStatus(GPIO_PORTD_BASE,true);
+    GPIOIntClear(GPIO_PORTD_BASE,status);
+
+    sTime = get_fast_ticks();
+    flags = 0x100;
+}
+
+void PortBInt(void)
+{
+    uint32_t s = GPIOIntStatus(GPIO_PORTB_BASE,false);
+    uint32_t t = get_fast_ticks();
+    if ((t-sTime)>1000) {
+        if (s & GPIO_PIN_6) {
+            ch0T = t;
+            flags |= 0x01;
+        }
+        if (s & GPIO_PIN_7) {
+            ch1T = t;
+            flags |= 0x02;
+        }
+        if (s & GPIO_PIN_2) {
+            ch2T = t;
+            flags |= 0x04;
+        }
+        /*if (s & GPIO_PIN_3) {
+            ch3T = t;
+            flags |= 0x08;
+        }
+        if (s & GPIO_PIN_5) {
+            ch4T = t;
+            flags |= 0x10;
+        }
+        if (s & GPIO_PIN_0) {
+            ch5T = t;
+            flags |= 0x20;
+        }
+        if (s & GPIO_PIN_1) {
+            ch6T = t;
+            flags |= 0x40;
+        }
+        if (s & GPIO_PIN_4) {
+            ch7T = t;
+            flags |= 0x80;
+        }*/
+    }
+
+    GPIOIntClear(GPIO_PORTB_BASE,s);
+}
+
+uint8_t Servo8Bit(uint32_t serv)
+{
+    int32_t val32 = ((serv - 80000) * 256 / 80000);
+    if (val32<0)
+        return (0x00);
+    if (val32>255)
+        return (0xFF);
+    return val32;
+}
+
 //*****************************************************************************
 //
 // This is the main loop that runs the application.
@@ -364,21 +445,23 @@ main(void)
     uint8_t ui8ButtonsChanged, ui8Buttons;
     bool bUpdate;
 
-    //
-    // Set the clocking to run from the PLL at 50MHz
-    //
-    ROM_SysCtlClockSet(SYSCTL_SYSDIV_4 | SYSCTL_USE_PLL | SYSCTL_OSC_MAIN |
-                       SYSCTL_XTAL_16MHZ);
+    // Set the clocking to run from the PLL
+    //ROM_SysCtlClockSet(SYSCTL_SYSDIV_4 | SYSCTL_USE_PLL | SYSCTL_OSC_MAIN | SYSCTL_XTAL_16MHZ);
+    ROM_SysCtlClockSet(SYSCTL_SYSDIV_2_5|SYSCTL_USE_PLL|SYSCTL_OSC_MAIN|SYSCTL_XTAL_16MHZ); // 80MHz
 
-    //
-    // Enable the GPIO port that is used for the on-board LED.
-    //
+    init_timer();
+
+    ROM_SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOB);
+    ROM_SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOD);
     ROM_SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOF);
 
-    //
-    // Enable the GPIO pin for the Blue LED (PF2).
-    //
-    ROM_GPIOPinTypeGPIOOutput(GPIO_PORTF_BASE, GPIO_PIN_2);
+    /*ROM_GPIOPinTypeGPIOInput(GPIO_PORTD_BASE, GPIO_PIN_0);
+    ROM_GPIOPadConfigSet(GPIO_PORTD_BASE,GPIO_PIN_0,GPIO_STRENGTH_2MA,GPIO_PIN_TYPE_STD_WPU);*/
+    ROM_GPIOPinTypeGPIOInput(GPIO_PORTB_BASE,0xFF); // falling edge ch1..3
+    ROM_GPIOPadConfigSet(GPIO_PORTB_BASE,0xFF,GPIO_STRENGTH_2MA,GPIO_PIN_TYPE_STD_WPU);
+
+    // Onboard leds
+    ROM_GPIOPinTypeGPIOOutput(GPIO_PORTF_BASE, GPIO_PIN_1|GPIO_PIN_2|GPIO_PIN_3);
 
     //
     // Open UART0 and show the application name on the UART.
@@ -445,11 +528,29 @@ main(void)
     //
     ADCProcessorTrigger(ADC0_BASE, 0);
 
+    // detect rising edge of ch0
+    /*GPIOIntDisable(GPIO_PORTD_BASE,GPIO_PIN_0);
+    GPIOIntClear(GPIO_PORTD_BASE,GPIO_PIN_0);
+    GPIOIntRegister(GPIO_PORTD_BASE,PortDInt);
+    GPIOIntTypeSet(GPIO_PORTD_BASE,GPIO_PIN_0,GPIO_RISING_EDGE);
+    GPIOIntEnable(GPIO_PORTD_BASE, GPIO_INT_PIN_0);*/
+
+    // detect falling edges of all channels
+    /*GPIOIntDisable(GPIO_PORTB_BASE,GPIO_PIN_2|GPIO_PIN_6|GPIO_PIN_7);
+    GPIOIntClear(GPIO_PORTB_BASE,GPIO_PIN_2|GPIO_PIN_6|GPIO_PIN_7);
+    GPIOIntRegister(GPIO_PORTB_BASE,PortBInt);
+    GPIOIntTypeSet(GPIO_PORTB_BASE,GPIO_PIN_2|GPIO_PIN_6|GPIO_PIN_7,GPIO_FALLING_EDGE);  
+    GPIOIntEnable(GPIO_PORTB_BASE,GPIO_INT_PIN_2|GPIO_INT_PIN_6|GPIO_INT_PIN_7);*/
+    
     //
     // The main loop starts here.  We begin by waiting for a host connection
     // then drop into the main gamepad handling section.  If the host
     // disconnects, we return to the top and wait for a new connection.
     //
+    uint8_t pp = 0;
+    uint32_t st[8];
+    uint8_t sf = 0;
+
     while(1)
     {
         //
@@ -493,7 +594,7 @@ main(void)
             //
             // See if the ADC updated.
             //
-            if(ADCIntStatus(ADC0_BASE, 0, false) != 0)
+            /*if(ADCIntStatus(ADC0_BASE, 0, false) != 0)
             {
                 //
                 // Clear the ADC interrupt.
@@ -513,6 +614,49 @@ main(void)
                 sReport.i8YPos = Convert8Bit(g_pui32ADCData[1]);
                 sReport.i8ZPos = Convert8Bit(g_pui32ADCData[2]);
                 bUpdate = true;
+            }*/
+
+            uint8_t p = ROM_GPIOPinRead(GPIO_PORTB_BASE,0xFF);
+            uint32_t t = get_fast_ticks();
+
+            int i;
+
+            for (i=0;i<8;i++) {
+                uint8_t m = (1<<i);
+                if ((p&m)!=(pp&m)) {
+                    if (p&m) { // rising edge
+                        st[i]=t;
+                        sf&=~m; 
+                    }
+                    else { // falling edge
+                        st[i] = t-st[i];
+                        sf|=m;
+                    }
+                }
+            }
+            pp = p;
+        
+            if (sf==0xFF) {
+                /*for (i=0;i<8;i++) {
+                    UARTprintf("%05X ",st[i]);
+                }
+                UARTprintf("\n\r");*/
+                
+                sf = 0;
+
+                sReport.i8XPos = Servo8Bit(st[7]);
+                sReport.i8YPos = Servo8Bit(st[6]);
+                sReport.i8ZPos = Servo8Bit(st[2]);
+                bUpdate = true;
+
+                static int cnt = 0;
+                cnt++;
+                if (cnt>50) {
+                    ROM_GPIOPinWrite(GPIO_PORTF_BASE,GPIO_PIN_1,GPIO_PIN_1);
+                    cnt=0;
+                }
+                else
+                    ROM_GPIOPinWrite(GPIO_PORTF_BASE,GPIO_PIN_1,0);
             }
 
             //
