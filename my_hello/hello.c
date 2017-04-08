@@ -117,10 +117,12 @@ void PortBInt(void)
 {
     uint32_t s = GPIOIntStatus(GPIO_PORTB_BASE,false);
     uint32_t t = get_fast_ticks();
+
+    GPIOIntClear(GPIO_PORTB_BASE,s);
+
     if ((t-sTime)>1000) {
         if (s & GPIO_PIN_6) {
             ch0T = t;
-            GPIOIntClear(GPIO_PORTB_BASE,GPIO_PIN_6);
             flags |= 0x01;
         }
         if (s & GPIO_PIN_7) {
@@ -152,8 +154,6 @@ void PortBInt(void)
             flags |= 0x80;
         }*/
     }
-
-    GPIOIntClear(GPIO_PORTB_BASE,s);
 }
 
 //*****************************************************************************
@@ -189,7 +189,7 @@ main(void)
 
     ROM_GPIOPinTypeGPIOOutput(GPIO_PORTF_BASE, GPIO_PIN_1|GPIO_PIN_2|GPIO_PIN_3); // on board leds
 
-    ROM_GPIOPinTypeGPIOInput(GPIO_PORTD_BASE, GPIO_PIN_0); // rising edge detect
+    /*ROM_GPIOPinTypeGPIOInput(GPIO_PORTD_BASE, GPIO_PIN_0); // rising edge detect
     ROM_GPIOPadConfigSet(GPIO_PORTD_BASE,GPIO_PIN_0,GPIO_STRENGTH_2MA,GPIO_PIN_TYPE_STD_WPU);
     GPIOIntDisable(GPIO_PORTD_BASE,GPIO_PIN_0);
     GPIOIntClear(GPIO_PORTD_BASE,GPIO_PIN_0);
@@ -197,15 +197,15 @@ main(void)
     GPIOIntTypeSet(GPIO_PORTD_BASE,GPIO_PIN_0,GPIO_RISING_EDGE);
     GPIOIntEnable(GPIO_PORTD_BASE, GPIO_INT_PIN_0);
 
-    uint8_t mask = GPIO_PIN_0|GPIO_PIN_2|GPIO_PIN_3|GPIO_PIN_5|GPIO_PIN_6|GPIO_PIN_7;
-    ROM_GPIOPinTypeGPIOInput(GPIO_PORTB_BASE,mask); // falling edge ch0..7
-    ROM_GPIOPadConfigSet(GPIO_PORTB_BASE,mask,GPIO_STRENGTH_2MA,GPIO_PIN_TYPE_STD_WPU);
-    GPIOIntDisable(GPIO_PORTB_BASE,mask);
+    uint8_t mask = GPIO_PIN_0|GPIO_PIN_2|GPIO_PIN_3|GPIO_PIN_5|GPIO_PIN_6|GPIO_PIN_7;*/
+    ROM_GPIOPinTypeGPIOInput(GPIO_PORTB_BASE,0xFF); // falling edge ch0..7
+    ROM_GPIOPadConfigSet(GPIO_PORTB_BASE,0xFF,GPIO_STRENGTH_2MA,GPIO_PIN_TYPE_STD_WPU);
+    /*GPIOIntDisable(GPIO_PORTB_BASE,mask);
     GPIOIntClear(GPIO_PORTB_BASE,mask);
     GPIOIntRegister(GPIO_PORTB_BASE,PortBInt);
     GPIOIntTypeSet(GPIO_PORTB_BASE,0xEC,GPIO_FALLING_EDGE);  
     GPIOIntEnable(GPIO_PORTB_BASE,GPIO_INT_PIN_0|GPIO_INT_PIN_2|GPIO_INT_PIN_3|
-                                  GPIO_INT_PIN_5|GPIO_INT_PIN_6|GPIO_INT_PIN_7);
+                                  GPIO_INT_PIN_5|GPIO_INT_PIN_6|GPIO_INT_PIN_7);*/
 
     //
     // Initialize the UART.
@@ -220,13 +220,39 @@ main(void)
     uint32_t blinkPeriod = SysCtlClockGet()/10;
     uint32_t blinkTime = 0;
 
+    uint8_t pp = 0;
+    uint32_t st[8];
+    uint8_t sf = 0;
+
     // LOOP
     while(1)
     {
-        if (flags>=0x13F) {
-            UARTprintf("%05X %05X %05X %05X %05X %05X\n\r",ch0T-sTime,ch1T-sTime,ch2T-sTime,
-                                                           ch3T-sTime,ch4T-sTime,ch5T-sTime);
-            flags = 0;
+        uint8_t p = ROM_GPIOPinRead(GPIO_PORTB_BASE,0xFF);
+        uint32_t t = get_fast_ticks();
+
+        int i;
+
+        for (i=0;i<8;i++) {
+            uint8_t m = (1<<i);
+            if ((p&m)!=(pp&m)) {
+                if (p&m) { // rising edge
+                    st[i]=t;
+                    sf&=~m; 
+                }
+                else { // falling edge
+                    st[i] = t-st[i];
+                    sf|=m;
+                }
+            }
+        }
+        pp = p;
+        
+        if (sf==0xFF) {
+            for (i=0;i<8;i++) {
+                UARTprintf("%05X ",st[i]);
+            }
+            UARTprintf("\n\r");
+            sf = 0;
         }
 
         if ((get_fast_ticks()-blinkTime)>=blinkPeriod) {
