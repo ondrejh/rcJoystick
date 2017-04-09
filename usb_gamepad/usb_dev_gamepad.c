@@ -311,7 +311,7 @@ ConfigureUART(void)
 // the ADC pins on Port E pins 1, 2, and 3(AIN0-2).
 //
 //*****************************************************************************
-void
+/*void
 ADCInit(void)
 {
     int32_t ui32Chan;
@@ -353,7 +353,7 @@ ADCInit(void)
     // Enable the sequence but do not start it yet.
     //
     ROM_ADCSequenceEnable(ADC0_BASE, 0);
-}
+}*/
 
 //#define get_fast_ticks() TimerValueGet(TIMER0_BASE,TIMER_A)
 #define get_fast_ticks() HWREG(TIMER0_BASE+TIMER_O_TAR)
@@ -368,7 +368,7 @@ void init_timer(void)
     TimerEnable(TIMER0_BASE, TIMER_A);
 }
 
-volatile uint32_t sTime, ch0T, ch1T, ch2T;
+/*volatile uint32_t sTime, ch0T, ch1T, ch2T;
 volatile uint32_t flags = 0;
 
 void PortDInt(void)
@@ -419,10 +419,10 @@ void PortBInt(void)
             ch7T = t;
             flags |= 0x80;
         }*/
-    }
+    /*}
 
     GPIOIntClear(GPIO_PORTB_BASE,s);
-}
+}*/
 
 uint8_t Servo8Bit(uint32_t serv)
 {
@@ -492,7 +492,7 @@ main(void)
     //
     // Initialize the ADC channels.
     //
-    ADCInit();
+    //ADCInit();
 
     //
     // Tell the user what we are up to.
@@ -526,7 +526,7 @@ main(void)
     //
     // Trigger an initial ADC sequence.
     //
-    ADCProcessorTrigger(ADC0_BASE, 0);
+    //ADCProcessorTrigger(ADC0_BASE, 0);
 
     // detect rising edge of ch0
     /*GPIOIntDisable(GPIO_PORTD_BASE,GPIO_PIN_0);
