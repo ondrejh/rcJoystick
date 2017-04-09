@@ -4,20 +4,20 @@
 //
 // Copyright (c) 2013-2017 Texas Instruments Incorporated.  All rights reserved.
 // Software License Agreement
-// 
+//
 // Texas Instruments (TI) is supplying this software for use solely and
 // exclusively on TI's microcontroller products. The software is owned by
 // TI and/or its suppliers, and is protected under applicable copyright
 // laws. You may not combine this software with "viral" open-source
 // software in order to form a larger program.
-// 
+//
 // THIS SOFTWARE IS PROVIDED "AS IS" AND WITH ALL FAULTS.
 // NO WARRANTIES, WHETHER EXPRESS, IMPLIED OR STATUTORY, INCLUDING, BUT
 // NOT LIMITED TO, IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
 // A PARTICULAR PURPOSE APPLY TO THIS SOFTWARE. TI SHALL NOT, UNDER ANY
 // CIRCUMSTANCES, BE LIABLE FOR SPECIAL, INCIDENTAL, OR CONSEQUENTIAL
 // DAMAGES, FOR ANY REASON WHATSOEVER.
-// 
+//
 // This is part of revision 2.1.4.178 of the EK-TM4C123GXL Firmware Package.
 //
 //*****************************************************************************
@@ -41,7 +41,7 @@
 #include "usblib/usbhid.h"
 #include "usblib/device/usbdevice.h"
 #include "usblib/device/usbdhid.h"
-#include "usblib/device/usbdhidgamepad.h"
+#include "usbdhidgamepad.h"
 #include "usb_gamepad_structs.h"
 #include "drivers/buttons.h"
 #include "utils/uartstdio.h"
@@ -70,13 +70,6 @@
 //
 //*****************************************************************************
 static tGamepadReport sReport;
-
-//*****************************************************************************
-//
-// The HID gamepad polled ADC data for the X/Y/Z coordinates.
-//
-//*****************************************************************************
-static uint32_t g_pui32ADCData[3];
 
 //*****************************************************************************
 //
@@ -305,58 +298,7 @@ ConfigureUART(void)
     UARTStdioConfig(0, 115200, ROM_SysCtlClockGet());
 }
 
-//*****************************************************************************
-//
-// Initialize the ADC inputs used by the game pad device.  This example uses
-// the ADC pins on Port E pins 1, 2, and 3(AIN0-2).
-//
-//*****************************************************************************
-/*void
-ADCInit(void)
-{
-    int32_t ui32Chan;
-
-    //
-    // Enable the GPIOs and the ADC used by this example.
-    //
-    ROM_SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOE);
-    SysCtlGPIOAHBEnable(SYSCTL_PERIPH_GPIOE);
-
-    ROM_SysCtlPeripheralEnable(SYSCTL_PERIPH_ADC0);
-    ROM_SysCtlPeripheralReset(SYSCTL_PERIPH_ADC0);
-
-    //
-    // Select the external reference for greatest accuracy.
-    //
-    ROM_ADCReferenceSet(ADC0_BASE, ADC_REF_EXT_3V);
-
-    //
-    // Configure the pins which are used as analog inputs.
-    //
-    ROM_GPIOPinTypeADC(GPIO_PORTE_AHB_BASE, GPIO_PIN_3 | GPIO_PIN_2 |
-                                            GPIO_PIN_1);
-
-    //
-    // Configure the sequencer for 3 steps.
-    //
-    for(ui32Chan = 0; ui32Chan < 2; ui32Chan++)
-    {
-        //
-        // Configure the sequence step
-        //
-        ROM_ADCSequenceStepConfigure(ADC0_BASE, 0, ui32Chan, ui32Chan);
-    }
-
-    ROM_ADCSequenceStepConfigure(ADC0_BASE, 0, 2, ADC_CTL_CH2 | ADC_CTL_IE |
-                                                  ADC_CTL_END);
-    //
-    // Enable the sequence but do not start it yet.
-    //
-    ROM_ADCSequenceEnable(ADC0_BASE, 0);
-}*/
-
-//#define get_fast_ticks() TimerValueGet(TIMER0_BASE,TIMER_A)
-#define get_fast_ticks() HWREG(TIMER0_BASE+TIMER_O_TAR)
+#define get_fast_ticks() TimerValueGet(TIMER0_BASE,TIMER_A)
 
 void init_timer(void)
 {
@@ -368,69 +310,25 @@ void init_timer(void)
     TimerEnable(TIMER0_BASE, TIMER_A);
 }
 
-/*volatile uint32_t sTime, ch0T, ch1T, ch2T;
-volatile uint32_t flags = 0;
-
-void PortDInt(void)
-{
-    uint32_t status=0;
-
-    status = GPIOIntStatus(GPIO_PORTD_BASE,true);
-    GPIOIntClear(GPIO_PORTD_BASE,status);
-
-    sTime = get_fast_ticks();
-    flags = 0x100;
-}
-
-void PortBInt(void)
-{
-    uint32_t s = GPIOIntStatus(GPIO_PORTB_BASE,false);
-    uint32_t t = get_fast_ticks();
-    if ((t-sTime)>1000) {
-        if (s & GPIO_PIN_6) {
-            ch0T = t;
-            flags |= 0x01;
-        }
-        if (s & GPIO_PIN_7) {
-            ch1T = t;
-            flags |= 0x02;
-        }
-        if (s & GPIO_PIN_2) {
-            ch2T = t;
-            flags |= 0x04;
-        }
-        /*if (s & GPIO_PIN_3) {
-            ch3T = t;
-            flags |= 0x08;
-        }
-        if (s & GPIO_PIN_5) {
-            ch4T = t;
-            flags |= 0x10;
-        }
-        if (s & GPIO_PIN_0) {
-            ch5T = t;
-            flags |= 0x20;
-        }
-        if (s & GPIO_PIN_1) {
-            ch6T = t;
-            flags |= 0x40;
-        }
-        if (s & GPIO_PIN_4) {
-            ch7T = t;
-            flags |= 0x80;
-        }*/
-    /*}
-
-    GPIOIntClear(GPIO_PORTB_BASE,s);
-}*/
-
+/*// linux version
 uint8_t Servo8Bit(uint32_t serv)
 {
-    int32_t val32 = ((serv - 80000) * 256 / 80000);
+    int32_t val32 = (((int32_t)serv - 80000) * 256 / 80000);
     if (val32<0)
-        return (0x00);
+        return (0);
     if (val32>255)
-        return (0xFF);
+        return (255);
+    return val32;
+}*/
+
+// windows version
+int8_t Servo8Bit(uint32_t serv)
+{
+    int32_t val32 = (((int32_t)serv - 80000) * 256 / 80000) - 128;
+    if (val32<-128)
+        return (-128);
+    if (val32>127)
+        return (127);
     return val32;
 }
 
@@ -490,11 +388,6 @@ main(void)
     ButtonsInit();
 
     //
-    // Initialize the ADC channels.
-    //
-    //ADCInit();
-
-    //
     // Tell the user what we are up to.
     //
     UARTprintf("Configuring USB\n");
@@ -522,26 +415,8 @@ main(void)
     // Tell the user what we are doing and provide some basic instructions.
     //
     UARTprintf("\nWaiting For Host...\n");
+    UARTprintf("\n%d\n",sizeof(sReport));
 
-    //
-    // Trigger an initial ADC sequence.
-    //
-    //ADCProcessorTrigger(ADC0_BASE, 0);
-
-    // detect rising edge of ch0
-    /*GPIOIntDisable(GPIO_PORTD_BASE,GPIO_PIN_0);
-    GPIOIntClear(GPIO_PORTD_BASE,GPIO_PIN_0);
-    GPIOIntRegister(GPIO_PORTD_BASE,PortDInt);
-    GPIOIntTypeSet(GPIO_PORTD_BASE,GPIO_PIN_0,GPIO_RISING_EDGE);
-    GPIOIntEnable(GPIO_PORTD_BASE, GPIO_INT_PIN_0);*/
-
-    // detect falling edges of all channels
-    /*GPIOIntDisable(GPIO_PORTB_BASE,GPIO_PIN_2|GPIO_PIN_6|GPIO_PIN_7);
-    GPIOIntClear(GPIO_PORTB_BASE,GPIO_PIN_2|GPIO_PIN_6|GPIO_PIN_7);
-    GPIOIntRegister(GPIO_PORTB_BASE,PortBInt);
-    GPIOIntTypeSet(GPIO_PORTB_BASE,GPIO_PIN_2|GPIO_PIN_6|GPIO_PIN_7,GPIO_FALLING_EDGE);  
-    GPIOIntEnable(GPIO_PORTB_BASE,GPIO_INT_PIN_2|GPIO_INT_PIN_6|GPIO_INT_PIN_7);*/
-    
     //
     // The main loop starts here.  We begin by waiting for a host connection
     // then drop into the main gamepad handling section.  If the host
@@ -591,31 +466,6 @@ main(void)
                 bUpdate = true;
             }
 
-            //
-            // See if the ADC updated.
-            //
-            /*if(ADCIntStatus(ADC0_BASE, 0, false) != 0)
-            {
-                //
-                // Clear the ADC interrupt.
-                //
-                ADCIntClear(ADC0_BASE, 0);
-
-                //
-                // Read the data and trigger a new sample request.
-                //
-                ADCSequenceDataGet(ADC0_BASE, 0, &g_pui32ADCData[0]);
-                ADCProcessorTrigger(ADC0_BASE, 0);
-
-                //
-                // Update the report.
-                //
-                sReport.i8XPos = Convert8Bit(g_pui32ADCData[0]);
-                sReport.i8YPos = Convert8Bit(g_pui32ADCData[1]);
-                sReport.i8ZPos = Convert8Bit(g_pui32ADCData[2]);
-                bUpdate = true;
-            }*/
-
             uint8_t p = ROM_GPIOPinRead(GPIO_PORTB_BASE,0xFF);
             uint32_t t = get_fast_ticks();
 
@@ -626,7 +476,7 @@ main(void)
                 if ((p&m)!=(pp&m)) {
                     if (p&m) { // rising edge
                         st[i]=t;
-                        sf&=~m; 
+                        sf&=~m;
                     }
                     else { // falling edge
                         st[i] = t-st[i];
@@ -635,17 +485,12 @@ main(void)
                 }
             }
             pp = p;
-        
+
             if (sf==0xFF) {
-                /*for (i=0;i<8;i++) {
-                    UARTprintf("%05X ",st[i]);
-                }
-                UARTprintf("\n\r");*/
-                
                 sf = 0;
 
-                sReport.i8XPos = Servo8Bit(st[7]);
-                sReport.i8YPos = Servo8Bit(st[6]);
+                sReport.i8XPos = Servo8Bit(st[6]);
+                sReport.i8YPos = Servo8Bit(st[7]);
                 sReport.i8ZPos = Servo8Bit(st[2]);
                 bUpdate = true;
 
