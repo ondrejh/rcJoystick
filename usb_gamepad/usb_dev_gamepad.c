@@ -310,8 +310,8 @@ void init_timer(void)
     TimerEnable(TIMER0_BASE, TIMER_A);
 }
 
-/*// linux version
-uint8_t Servo8Bit(uint32_t serv)
+// linux version
+/*uint8_t Servo8Bit(uint32_t serv)
 {
     int32_t val32 = (((int32_t)serv - 80000) * 256 / 80000);
     if (val32<0)
@@ -330,6 +330,11 @@ int8_t Servo8Bit(uint32_t serv)
     if (val32>127)
         return (127);
     return val32;
+}
+
+int8_t invert8bit(int8_t serv)
+{
+    return -(serv+1);
 }
 
 //*****************************************************************************
@@ -410,6 +415,7 @@ main(void)
     sReport.i8XPos = 0;
     sReport.i8YPos = 0;
     sReport.i8ZPos = 0;
+    //sReport.i8RXPos = 0;
 
     //
     // Tell the user what we are doing and provide some basic instructions.
@@ -489,7 +495,8 @@ main(void)
             if (sf==0xFF) {
                 sf = 0;
 
-                sReport.i8XPos = Servo8Bit(st[6]);
+                sReport.i8XPos = invert8bit(Servo8Bit(st[3]));
+                //sReport.i8XPos = Servo8Bit(st[3]);
                 sReport.i8YPos = Servo8Bit(st[7]);
                 sReport.i8ZPos = Servo8Bit(st[2]);
                 bUpdate = true;
