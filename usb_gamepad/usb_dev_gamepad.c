@@ -472,7 +472,7 @@ main(void)
                 bUpdate = true;
             }
 
-            uint8_t p = ROM_GPIOPinRead(GPIO_PORTB_BASE,0xFF);
+            uint8_t p = ROM_GPIOPinRead(GPIO_PORTB_BASE,0x23);
             uint32_t t = get_fast_ticks();
 
             int i;
@@ -492,14 +492,18 @@ main(void)
             }
             pp = p;
 
-            if (sf==0xFF) {
+            if (sf==0x23) {
                 sf = 0;
 
-                sReport.i8XPos = invert8bit(Servo8Bit(st[3]));
-                //sReport.i8XPos = Servo8Bit(st[3]);
-                sReport.i8YPos = Servo8Bit(st[7]);
-                sReport.i8ZPos = Servo8Bit(st[2]);
+                //sReport.i8XPos = invert8bit(Servo8Bit(st[3]));
+                sReport.i8XPos = Servo8Bit(st[1]);
+                sReport.i8YPos = Servo8Bit(st[0]);
+                sReport.i8ZPos = Servo8Bit(st[5]);
                 bUpdate = true;
+
+                for (i=0;i<8;i++)
+                    UARTprintf("%02X ",st[i]);
+                UARTprintf("\n\r");
 
                 static int cnt = 0;
                 cnt++;
