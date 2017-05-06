@@ -65,6 +65,7 @@
 //*****************************************************************************
 
 #define SW1_PRESSED (ROM_GPIOPinRead(GPIO_PORTF_BASE, GPIO_PIN_4)==0)
+#define SW2_PRESSED (ROM_GPIOPinRead(GPIO_PORTF_BASE, GPIO_PIN_0)==0)
 
 //*****************************************************************************
 //
@@ -362,10 +363,13 @@ main(void)
 
     // binding
     if (SW1_PRESSED) {
-        ROM_GPIOPinWrite(GPIO_PORTF_BASE,GPIO_PIN_1,GPIO_PIN_1);
+        // set binding input low
         ROM_GPIOPinTypeGPIOOutput(GPIO_PORTB_BASE, GPIO_PIN_0);
         ROM_GPIOPinWrite(GPIO_PORTB_BASE, GPIO_PIN_0, 0);
-        while (true) {};
+        // red led on (to show binding status)
+        ROM_GPIOPinWrite(GPIO_PORTF_BASE,GPIO_PIN_1,GPIO_PIN_1);
+        // loop forever
+        while (true);
     }
 
     // Set the clocking to run from the PLL
