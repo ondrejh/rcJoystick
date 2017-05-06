@@ -67,6 +67,14 @@
 #define SW1_PRESSED (ROM_GPIOPinRead(GPIO_PORTF_BASE, GPIO_PIN_4)==0)
 #define SW2_PRESSED (ROM_GPIOPinRead(GPIO_PORTF_BASE, GPIO_PIN_0)==0)
 
+#define CH1 1
+#define CH2 0
+#define CH3 5
+
+#define CH_MASK ((1<<CH1)|(1<<CH2)|(1<<CH3))
+
+#define BIND CH3
+
 //*****************************************************************************
 //
 // The HID gamepad report that is returned to the host.
@@ -364,8 +372,8 @@ main(void)
     // binding
     if (SW1_PRESSED) {
         // set binding input low
-        ROM_GPIOPinTypeGPIOOutput(GPIO_PORTB_BASE, GPIO_PIN_0);
-        ROM_GPIOPinWrite(GPIO_PORTB_BASE, GPIO_PIN_0, 0);
+        ROM_GPIOPinTypeGPIOOutput(GPIO_PORTB_BASE, (1<<BIND));
+        ROM_GPIOPinWrite(GPIO_PORTB_BASE, (1<<5), 0);
         // red led on (to show binding status)
         ROM_GPIOPinWrite(GPIO_PORTF_BASE,GPIO_PIN_1,GPIO_PIN_1);
         // loop forever
@@ -489,7 +497,7 @@ main(void)
                 bUpdate = true;
             }
 
-            uint8_t p = ROM_GPIOPinRead(GPIO_PORTB_BASE,0x23);
+            uint8_t p = ROM_GPIOPinRead(GPIO_PORTB_BASE,CH_MASK);
             uint32_t t = get_fast_ticks();
 
             int i;
@@ -509,13 +517,13 @@ main(void)
             }
             pp = p;
 
-            if (sf==0x23) {
+            if (sf==CH_MASK) {
                 sf = 0;
 
                 //sReport.i8XPos = invert8bit(Servo8Bit(st[3]));
-                sReport.i8XPos = Servo8Bit(st[1]);
-                sReport.i8YPos = Servo8Bit(st[0]);
-                sReport.i8ZPos = Servo8Bit(st[5]);
+                sReport.i8XPos = Servo8Bit(st[CH1]);
+                sReport.i8YPos = Servo8Bit(st[CH2]);
+                sReport.i8ZPos = Servo8Bit(st[CH3]);
                 bUpdate = true;
 
                 for (i=0;i<8;i++)
