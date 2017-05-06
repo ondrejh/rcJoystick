@@ -64,6 +64,8 @@
 //
 //*****************************************************************************
 
+#define SW1_PRESSED (ROM_GPIOPinRead(GPIO_PORTF_BASE, GPIO_PIN_4)==0)
+
 //*****************************************************************************
 //
 // The HID gamepad report that is returned to the host.
@@ -348,23 +350,34 @@ main(void)
     uint8_t ui8ButtonsChanged, ui8Buttons;
     bool bUpdate;
 
+    ROM_SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOB);
+    ROM_SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOD);
+    ROM_SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOF);
+
+    // Onboard leds
+    ROM_GPIOPinTypeGPIOOutput(GPIO_PORTF_BASE, GPIO_PIN_1|GPIO_PIN_2|GPIO_PIN_3);
+    // Onboard buttons
+    ROM_GPIOPinTypeGPIOInput(GPIO_PORTF_BASE, GPIO_PIN_0|GPIO_PIN_4);
+    ROM_GPIOPadConfigSet(GPIO_PORTF_BASE, GPIO_PIN_0|GPIO_PIN_4, GPIO_STRENGTH_2MA, GPIO_PIN_TYPE_STD_WPU);
+
+    // binding
+    if (SW1_PRESSED) {
+        ROM_GPIOPinWrite(GPIO_PORTF_BASE,GPIO_PIN_1,GPIO_PIN_1);
+        ROM_GPIOPinTypeGPIOOutput(GPIO_PORTB_BASE, GPIO_PIN_0);
+        ROM_GPIOPinWrite(GPIO_PORTB_BASE, GPIO_PIN_0, 0);
+        while (true) {};
+    }
+
     // Set the clocking to run from the PLL
     //ROM_SysCtlClockSet(SYSCTL_SYSDIV_4 | SYSCTL_USE_PLL | SYSCTL_OSC_MAIN | SYSCTL_XTAL_16MHZ);
     ROM_SysCtlClockSet(SYSCTL_SYSDIV_2_5|SYSCTL_USE_PLL|SYSCTL_OSC_MAIN|SYSCTL_XTAL_16MHZ); // 80MHz
 
     init_timer();
 
-    ROM_SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOB);
-    ROM_SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOD);
-    ROM_SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOF);
-
     /*ROM_GPIOPinTypeGPIOInput(GPIO_PORTD_BASE, GPIO_PIN_0);
     ROM_GPIOPadConfigSet(GPIO_PORTD_BASE,GPIO_PIN_0,GPIO_STRENGTH_2MA,GPIO_PIN_TYPE_STD_WPU);*/
     ROM_GPIOPinTypeGPIOInput(GPIO_PORTB_BASE,0xFF); // falling edge ch1..3
     ROM_GPIOPadConfigSet(GPIO_PORTB_BASE,0xFF,GPIO_STRENGTH_2MA,GPIO_PIN_TYPE_STD_WPU);
-
-    // Onboard leds
-    ROM_GPIOPinTypeGPIOOutput(GPIO_PORTF_BASE, GPIO_PIN_1|GPIO_PIN_2|GPIO_PIN_3);
 
     //
     // Open UART0 and show the application name on the UART.
