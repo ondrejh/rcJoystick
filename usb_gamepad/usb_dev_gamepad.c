@@ -464,6 +464,7 @@ main(void)
         //
         if(g_iGamepadState == eStateIdle)
         {
+            uint32_t t = get_fast_ticks();
             //
             // No update by default.
             //
@@ -481,6 +482,30 @@ main(void)
             //
             if(ui8Buttons & LEFT_BUTTON)
             {
+                sReport.ui8Buttons |= 0x02;
+            }
+
+            static int8_t z = -128;
+            static bool b = false;
+            static uint32_t bt;
+            if (z<0) {
+                if (sReport.i8ZPos>0) {
+                    z = 127;
+                    b = true;
+                    bt = t;
+                }
+            }
+            else {
+                if (sReport.i8ZPos<0) {
+                    z = -128;
+                    b = true;
+                    bt = t;
+                }
+            }
+
+            if (b) {
+                if ((t-bt)>16000000)
+                    b = false;
                 sReport.ui8Buttons |= 0x01;
             }
 
@@ -489,7 +514,7 @@ main(void)
             //
             if(ui8Buttons & RIGHT_BUTTON)
             {
-                sReport.ui8Buttons |= 0x02;
+                sReport.ui8Buttons |= 0x04;
             }
 
             if(ui8ButtonsChanged)
@@ -498,7 +523,6 @@ main(void)
             }
 
             uint8_t p = ROM_GPIOPinRead(GPIO_PORTB_BASE,CH_MASK);
-            uint32_t t = get_fast_ticks();
 
             int i;
 
