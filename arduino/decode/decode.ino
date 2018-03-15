@@ -1,59 +1,86 @@
 static uint8_t t;
 static uint8_t cnt;
 
-#define IN ((PIND&(1<<4))!=0)
-#define OUT(x) do{x?PORTB|=(1<<6):PORTB&=~(1<<6);}while(0)
+#define BIT5 (1<<5)
 
-volatile uint32_t tRx;
-char rxBuff[64];
-volatile uint8_t rxCnt;
+#define LED_INIT() do{DDRB|=BIT5;}while(0)
+#define LED_ON() do{PORTB|=BIT5;}while(0)
+#define LED_OFF() do{PORTB&=~BIT5;}while(0)
+#define LED_SWAP() do{PORTB^=BIT5;}while(0)
+#define LED ((PORTB&BIT5)!=0)
+
+#define RXBUFLEN 64
+uint8_t rxBuf[RXBUFLEN];
+uint8_t rxBufPtr = 0;
+uint32_t rxTim = 0;
+
+uint8_t pRxCnt = 0, pCnt = 0; 
 
 void setup() {
   // put your setup code here, to run once:
-  Serial.begin(1000000);
-  Serial1.begin(115200);
-  DDRB |= (1<<6);
-  DDRD &= ~(1<<4);
+  Serial.begin(115200);
 
-  tRx = micros();
-  rxCnt = 0;
-}
-
-void printHex8(char c) {
-  Serial.print((c>>4)&0xF,HEX);
-  Serial.print(c&0xF,HEX);
+  LED_INIT();
 }
 
 void loop() {
-  // put your main code here, to run repeatedly:
-  uint32_t now = micros();
-  if ((((int32_t)(now-tRx)) > 200) && (rxCnt>0)) {
-    OUT(true);
-    for (int i=0;i<rxCnt;i++) {
-      printHex8(rxBuff[i]);//Serial.print((uint8_t)rxBuff[i],HEX);
-      if (i<(rxCnt-1))
-        Serial.print(" ");
-      else
-        Serial.print("\r\n");
-    }
-    rxCnt=0;
-    OUT(false);
+  static int s = 0;
+  static uint32_t ledTim = 0;
+  static uint32_t pRecTim = 0;
+  uint32_t nu = micros();
+  uint32_t nm = millis();
+
+  if ((pRxCnt==pCnt) && (rxBufPtr>16) && ((nu-rxTim)>200) && (rxBuf[0]==0x20) && (rxBuf[1]==0x40)) {
+    rxBufPtr = 0;
+    pRxCnt ++;
+    pRecTim = nm;
   }
+
+  if (pCnt!=pRxCnt) {
+    pCnt = pRxCnt;
+    LED_ON();
+  }
+
+  if (LED && ((nm-pRecTim)>200))
+    LED_OFF();
+
+  /*switch (s) {
+    case 0: // waiting packet
+      if (((nu-rxTim)>200)&&(rxBufPtr>16)) {
+        s++;
+        LED_ON();
+      }
+      else {
+        if ((nm-ledTim)>500) {
+          ledTim = nm;
+          LED_SWAP();
+        }
+      }
+      break;
+    case 1: // receiving
+      if ((nu-rxTim)>20000) {
+        LED_OFF();
+        ledTim = nm;
+        s--;
+      }
+      break;
+  }*/
+  //uint32_t now = micros();
+  //if (LED&&((now-rxTim)>20)) {
+  //  LED_OFF();
+  //}
 }
 
-void serialEvent1() {
-  while (Serial1.available()) {
+void serialEvent() {
+  while (Serial.available()) {
     // get the new byte:
-    rxBuff[rxCnt++] = (char)Serial1.read();
-    tRx = micros();
-    /*uint32_t now=millis();
-    static uint32_t last;
-    static bool o = false;
-    if ((now-last)>2) {
-      OUT(o);
-      o = !o;
+    uint32_t now = micros();
+    if ((now - rxTim)>200) {
+      rxBufPtr = 0;
     }
-    last = now;*/
+    rxBuf[rxBufPtr++] = (uint8_t)Serial.read();
+    rxTim = now;
+    if (rxBufPtr>=RXBUFLEN)
+      rxBufPtr=RXBUFLEN-1;
   }
 }
-
