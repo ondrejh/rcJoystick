@@ -43,9 +43,10 @@
 #include "usblib/device/usbdhid.h"
 #include "usbdhidgamepad.h"
 #include "usb_gamepad_structs.h"
-#include "drivers/buttons.h"
+//#include "drivers/buttons.h"
 #include "utils/uartstdio.h"
 #include "driverlib/timer.h"
+#include "buttons.h"
 
 //*****************************************************************************
 //
@@ -477,14 +478,6 @@ main(void)
 
             sReport.ui8Buttons = 0;
 
-            //
-            // Set button 1 if left pressed.
-            //
-            if(ui8Buttons & LEFT_BUTTON)
-            {
-                sReport.ui8Buttons |= 0x02;
-            }
-
             static int8_t z = -128;
             static bool b = false;
             static uint32_t bt;
@@ -512,12 +505,16 @@ main(void)
             //
             // Set button 2 if right pressed.
             //
-            if(ui8Buttons & RIGHT_BUTTON)
-            {
-                sReport.ui8Buttons |= 0x04;
-            }
+            //if(ui8Buttons & RIGHT_BUTTON) sReport.ui8Buttons |= 0x04;
 
-            if(ui8ButtonsChanged)
+            //
+            // Set button 1 if left pressed.
+            //
+            //if(ui8Buttons & LEFT_BUTTON) sReport.ui8Buttons |= 0x02;
+
+            sReport.ui8Buttons |= (ui8Buttons&0x7E);
+
+            if(ui8ButtonsChanged&0x7E)
             {
                 bUpdate = true;
             }

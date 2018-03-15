@@ -42,16 +42,16 @@ include ${ROOT}/makedefs
 #
 #VPATH=../drivers
 #VPATH+=../../../../utils
-VPATH=${ROOT}/examples/boards/ek-tm4c123gxl/drivers
-VPATH+=${ROOT}/utils
+#VPATH=${ROOT}/examples/boards/ek-tm4c123gxl/drivers
+VPATH=${ROOT}/utils
 
 #
 # Where to find header files that do not live in the source directory.
 #
 #IPATH=..
 #IPATH+=../../../..
-IPATH=${ROOT}/examples/boards/ek-tm4c123gxl
-IPATH+=${ROOT}
+#IPATH=${ROOT}/examples/boards/ek-tm4c123gxl
+IPATH=${ROOT}
 
 #
 # The default rule, which causes the USB device gamepad example to be built.
