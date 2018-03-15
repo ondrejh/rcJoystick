@@ -1,6 +1,0 @@
-1) Stahnout a nainstalovat TivaWare
-2) Rozchodit HID joystick example
-3) Vyzkouset ovladac - receiver se servem
-4) Pripojit receiver
-5) Dekodovat servo kanaly
-6) Propojit (softwarove)
